@@ -1,0 +1,6 @@
+/.gradle/
+/.kotlin/
+/.serena/
+/.idea/
+.DS_Store
+local.properties
