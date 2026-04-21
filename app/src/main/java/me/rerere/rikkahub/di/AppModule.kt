@@ -1,0 +1,116 @@
+package me.rerere.rikkahub.di
+
+import com.google.firebase.Firebase
+import com.google.firebase.analytics.analytics
+import com.google.firebase.crashlytics.crashlytics
+import com.google.firebase.remoteconfig.remoteConfig
+import kotlinx.serialization.json.Json
+import me.rerere.highlight.Highlighter
+import me.rerere.rikkahub.AppScope
+import me.rerere.rikkahub.data.ai.AILoggingManager
+import me.rerere.rikkahub.data.ai.tools.LocalTools
+import me.rerere.rikkahub.data.root.LibsuShellRuntime
+import me.rerere.rikkahub.data.root.RootManager
+import me.rerere.rikkahub.data.root.RootTerminalSessionManager
+import me.rerere.rikkahub.data.root.ShellRuntime
+import me.rerere.rikkahub.data.root.SshCredentialStore
+import me.rerere.rikkahub.data.root.SshSessionManager
+import me.rerere.rikkahub.data.root.UnifiedTerminalManager
+import me.rerere.rikkahub.data.event.AppEventBus
+import me.rerere.rikkahub.service.ChatService
+import me.rerere.rikkahub.utils.EmojiData
+import me.rerere.rikkahub.utils.EmojiUtils
+import me.rerere.rikkahub.utils.JsonInstant
+import me.rerere.rikkahub.utils.UpdateChecker
+import me.rerere.rikkahub.web.WebServerManager
+import me.rerere.tts.provider.TTSManager
+import org.koin.dsl.module
+
+val appModule = module {
+    single<Json> { JsonInstant }
+
+    single {
+        Highlighter(get())
+    }
+
+    single {
+        AppEventBus()
+    }
+
+    single {
+        LocalTools(
+            context = get(),
+            eventBus = get(),
+            rootManager = get(),
+            settingsFlow = get<me.rerere.rikkahub.data.datastore.SettingsStore>().settingsFlow,
+            sshManager = get()
+        )
+    }
+
+    single {
+        UpdateChecker(get())
+    }
+
+    single {
+        AppScope()
+    }
+
+    single<EmojiData> {
+        EmojiUtils.loadEmoji(get())
+    }
+
+    single {
+        TTSManager(get())
+    }
+
+    single {
+        Firebase.crashlytics
+    }
+
+    single {
+        Firebase.remoteConfig
+    }
+
+    single {
+        Firebase.analytics
+    }
+
+    single {
+        AILoggingManager()
+    }
+
+    single {
+        ChatService(
+            context = get(),
+            appScope = get(),
+            settingsStore = get(),
+            conversationRepo = get(),
+            memoryRepository = get(),
+            generationHandler = get(),
+            templateTransformer = get(),
+            providerManager = get(),
+            localTools = get(),
+            mcpManager = get(),
+            filesManager = get(),
+            skillManager = get()
+        )
+    }
+
+    single<ShellRuntime> { LibsuShellRuntime() }
+    single { RootManager(get()) }
+    single { RootTerminalSessionManager(get(), get()) }
+    single { SshCredentialStore(get()) }
+    single { SshSessionManager(context = get(), settingsStore = get(), credentialStore = get(), appScope = get(), rootManager = get()) }
+    single { UnifiedTerminalManager(get(), get(), get(), get()) }
+
+    single {
+        WebServerManager(
+            context = get(),
+            appScope = get(),
+            chatService = get(),
+            conversationRepo = get(),
+            settingsStore = get(),
+            filesManager = get()
+        )
+    }
+}

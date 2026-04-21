@@ -348,6 +348,35 @@ class ClaudeProviderMessageTest {
         assertEquals("Hello, how are you?", textBlock?.get("text")?.jsonPrimitive?.content)
     }
 
+    @Test
+    fun `malformed tool input should still serialize to valid tool_use input`() {
+        val assistantMessage = UIMessage(
+            role = MessageRole.ASSISTANT,
+            parts = listOf(
+                createExecutedTool(
+                    "call_bad",
+                    "write_code",
+                    """{"code":"\(broken"}""",
+                    "ok"
+                )
+            )
+        )
+
+        val result = invokeBuildMessages(listOf(UIMessage.user("Fix it"), assistantMessage))
+
+        val toolUse = result
+            .flatMap { it.jsonObject["content"]?.jsonArray ?: emptyList() }
+            .first { it.jsonObject["type"]?.jsonPrimitive?.content == "tool_use" }
+            .jsonObject
+
+        assertEquals("write_code", toolUse["name"]?.jsonPrimitive?.content)
+        assertEquals("call_bad", toolUse["id"]?.jsonPrimitive?.content)
+        assertEquals(
+            "\\(broken",
+            toolUse["input"]?.jsonObject?.get("code")?.jsonPrimitive?.content
+        )
+    }
+
     // ==================== Helper Functions ====================
 
     private fun createExecutedTool(

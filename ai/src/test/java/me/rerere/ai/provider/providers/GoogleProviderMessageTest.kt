@@ -415,6 +415,35 @@ class GoogleProviderMessageTest {
             response?.get("result")?.jsonPrimitive?.content?.contains("Expected output value") == true)
     }
 
+    @Test
+    fun `malformed tool input should still serialize to valid functionCall args`() {
+        val assistantMessage = UIMessage(
+            role = MessageRole.ASSISTANT,
+            parts = listOf(
+                createExecutedTool(
+                    "call_bad",
+                    "write_code",
+                    """{"code":"\(broken"}""",
+                    "ok"
+                )
+            )
+        )
+
+        val result = invokeBuildContents(listOf(UIMessage.user("Fix it"), assistantMessage))
+
+        val functionCall = result
+            .flatMap { it.jsonObject["parts"]?.jsonArray ?: emptyList() }
+            .first { it.jsonObject.containsKey("functionCall") }
+            .jsonObject["functionCall"]!!
+            .jsonObject
+
+        assertEquals("write_code", functionCall["name"]?.jsonPrimitive?.content)
+        assertEquals(
+            "\\(broken",
+            functionCall["args"]?.jsonObject?.get("code")?.jsonPrimitive?.content
+        )
+    }
+
     // ==================== Helper Functions ====================
 
     private fun createExecutedTool(
